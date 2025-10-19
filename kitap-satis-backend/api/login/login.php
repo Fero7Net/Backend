@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once __DIR__ . '/../db/database.php';//veritabanı bağlantısını sağlar.
+require_once __DIR__ . '../../db/database.php';//veritabanı bağlantısını sağlar.
 
 $input = json_decode(file_get_contents('php://input'), true);//frontendden gelen json verisini okur.
 
