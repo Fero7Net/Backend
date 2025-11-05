@@ -10,7 +10,7 @@ if ($argc < 2) {
     exit(1);
 }
 
-// Komut satırından gelen email parametresini al
+// Komut satırından gelen email parametresini al.
 $email = $argv[1];
 
 // Veritabanı bağlantı dosyasını dahil et
