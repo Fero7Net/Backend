@@ -1,62 +1,86 @@
 <?php
-// BACKEND: Sepet sayfası
+// DOSYA ADI: Test/signup/signup.php
+// AÇIKLAMA: Yeni kullanıcı kaydını işleyen PHP dosyası
 
-require_once __DIR__ . '/../session.php';
+// Tarayıcıya JSON formatında yanıt göndereceğimizi belirt
+header('Content-Type: application/json; charset=utf-8');
 
-// 2. KATEGORİLERİ ÇEK
-// Navbar'da listelemek için
-try { 
-    $query = $pdo->query("
-        SELECT 
-            k.kategoriid, 
-            k.kategoriadi, 
-            COUNT(u.urunid) AS urun_sayisi
-        FROM 
-            Kategoriler k
-        LEFT JOIN 
-            Urun u ON k.kategoriid = u.kategoriid
-        GROUP BY 
-            k.kategoriid, k.kategoriadi
-        ORDER BY 
-            k.kategoriadi ASC
-    ");
-    $kategoriler = $query->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $kategoriler = [];
-}
+// Veritabanı bağlantı dosyasını dahil et
+require_once __DIR__ . '/../db/database.php';
 
-if (!$isLoggedIn) {
-    header("Location: /login/login.html");
+// Tarayıcıdan gönderilen JSON verisini oku ve PHP dizisine çevir
+$input = json_decode(file_get_contents('php://input'), true);
+
+// Gerekli alanların (ad, soyad, email, sifre) gelip gelmediğini kontrol et
+if (!isset($input['ad'], $input['soyad'], $input['email'], $input['sifre'])) {
+    // Eksik bilgi varsa hata mesajı gönder ve çık
+    echo json_encode(['success' => false, 'message' => 'Eksik bilgi gönderildi.']);
     exit;
 }
 
-$orderMessage = '';
-if (isset($_GET['order']) && $_GET['order'] === 'success') {
-    $orderMessage = 'Siparişiniz onaylandı!';
+// Gelen verileri temizle (başındaki/sonundaki boşlukları sil)
+$ad = trim($input['ad']); // Adı temizle
+$soyad = trim($input['soyad']); // Soyadı temizle
+$email = trim($input['email']); // Email'i temizle
+$sifre = trim($input['sifre']); // Şifreyi temizle
+$yetki = 'user'; // Yeni kullanıcılar varsayılan olarak 'user' yetkisine sahip
+
+// === VERİ DOĞRULAMA (VALIDATION) ===
+
+// Ad kontrolü: Yalnızca harfler (Türkçe karakterler dahil) olabilir
+if (!preg_match('/^[a-zA-ZçÇğĞıİöÖşŞüÜ]+$/u', $ad)) {
+    // Ad hatalı ise hata mesajı gönder ve çık
+    echo json_encode([
+        'success' => false,
+        'message' => 'Ad yalnızca harflerden oluşmalıdır.'
+    ]);
+    exit;
 }
 
-// Sepetteki ürünleri getir
+// Soyad kontrolü: Yalnızca harfler (Türkçe karakterler dahil) olabilir
+if (!preg_match('/^[a-zA-ZçÇğĞıİöÖşŞüÜ]+$/u', $soyad)) {
+    // Soyad hatalı ise hata mesajı gönder ve çık
+    echo json_encode([
+        'success' => false,
+        'message' => 'Soyad yalnızca harflerden oluşmalıdır.'
+    ]);
+    exit;
+}
+
+// Şifre kontrolü: Harf, rakam, "_" ve "." karakterleri olabilir, uzunluk 4-16 karakter arası
+if (!preg_match('/^[A-Za-z0-9_.]{4,16}$/', $sifre)) {
+    // Şifre hatalı ise hata mesajı gönder ve çık
+    echo json_encode([
+        'success' => false,
+        'message' => 'Şifre yalnızca harf, rakam, "_" ve "." içerebilir ve 4-16 karakter uzunluğunda olmalıdır.'
+    ]);
+    exit;
+}
+
+// Şifreyi güvenlik için hash'le (şifrele)
+$sifre_hash = password_hash($sifre, PASSWORD_BCRYPT);
+
+// === VERİTABANI İŞLEMLERİ ===
 try {
-    $stmt = $pdo->prepare("
-        SELECT s.sepetid, s.adet, u.urunid, u.urunadi, u.yazar, u.fiyat, u.aciklama, u.resim
-        FROM Sepet s 
-        JOIN Urun u ON s.urunid = u.urunid 
-        WHERE s.kullaniciid = ?
-        ORDER BY s.sepetid DESC
-    ");
-    $stmt->execute([$currentUser['kullaniciid']]);
-    $sepetUrunleri = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Önce bu email'in veritabanında kayıtlı olup olmadığını kontrol et
+    $stmt = $pdo->prepare("SELECT * FROM Kullanici WHERE email = ?");
+    $stmt->execute([$email]);
     
-    $toplamTutar = 0;
-    $toplamUrunSayisi = 0;
-    foreach ($sepetUrunleri as $urun) {
-        $toplamTutar += $urun['fiyat'] * $urun['adet'];
-        $toplamUrunSayisi += $urun['adet'];
+    // Eğer bu email zaten kayıtlıysa
+    if ($stmt->fetch()) {
+        // Hata mesajı gönder ve çık
+        echo json_encode(['success' => false, 'message' => 'Bu e-posta zaten kayıtlı.']);
+        exit;
     }
-    
+
+    // Email kayıtlı değilse, yeni kullanıcıyı veritabanına ekle
+    $stmt = $pdo->prepare("INSERT INTO Kullanici (adi, soyadi, email, sifre, yetki) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$ad, $soyad, $email, $sifre_hash, $yetki]);
+
+    // Kayıt başarılı, başarı mesajı gönder
+    echo json_encode(['success' => true, 'message' => 'Kayıt başarıyla tamamlandı!']);
 } catch (PDOException $e) {
-    $sepetUrunleri = [];
-    $toplamTutar = 0;
-    $toplamUrunSayisi = 0;
+    // Veritabanı hatası olursa hata mesajı gönder
+    echo json_encode(['success' => false, 'message' => 'Veritabanı hatası: ' . $e->getMessage()]);
 }
 ?>
