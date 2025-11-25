@@ -1,10 +1,7 @@
 <?php
-// BACKEND: Tüm ürünler
-
 require_once __DIR__ . '/../session.php';
 
-// 2. KATEGORİLERİ ÇEK
-// Navbar'da listelemek için
+//kategorileri çekme
 try { 
     $query = $pdo->query("
         SELECT 

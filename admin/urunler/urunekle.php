@@ -1,17 +1,13 @@
 <?php
-// DOSYA ADI: Test/admin/urunler/urunekle.php (YENİ DOSYA)
-// AÇIKLAMA: Admin ürün ekleme sayfası
-
-// 1. Merkezi oturum kontrol dosyamızı çağır
 require_once __DIR__ . '/../../session.php';
 
-// 2. ADMIN GÜVENLİK KONTROLÜ
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. KATEGORİLERİ ÇEK (R4.2)
+// kategorileri veritabanından çeker
 try {
     $stmt = $pdo->prepare("SELECT * FROM Kategoriler ORDER BY kategoriadi");
     $stmt->execute();
@@ -20,53 +16,55 @@ try {
     $kategoriler = [];
 }
 
-// 4. ÜRÜN EKLEME İŞLEMİ (R4.1)
 $mesaj = '';
 $mesajTipi = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $urunAdi = trim($_POST['urun_adi'] ?? '');
-    $yazar = trim($_POST['yazar'] ?? '');
+
+    // formdan gelen verileri alır boşluk var ise temizler
+    $urunAdi    = trim($_POST['urun_adi'] ?? '');
+    $yazar      = trim($_POST['yazar'] ?? '');
     $kategoriId = (int)($_POST['kategori_id'] ?? 0);
-    $fiyat = (float)($_POST['fiyat'] ?? 0);
-    $aciklama = trim($_POST['aciklama'] ?? '');
-    
-    // Validasyon
+    $fiyat      = (float)($_POST['fiyat'] ?? 0);
+    $aciklama   = trim($_POST['aciklama'] ?? '');
+
+    // boş veya hatalı kontrolü
     if (empty($urunAdi)) {
         $mesaj = "Ürün adı boş olamaz!";
         $mesajTipi = "error";
+
     } elseif (empty($yazar)) {
         $mesaj = "Yazar adı boş olamaz!";
         $mesajTipi = "error";
+
     } elseif ($kategoriId <= 0) {
         $mesaj = "Geçerli bir kategori seçiniz!";
         $mesajTipi = "error";
+
     } elseif ($fiyat <= 0) {
         $mesaj = "Geçerli bir fiyat giriniz!";
         $mesajTipi = "error";
+
     } else {
         try {
-            // RESİM YÜKLEME İŞLEMİ
+            // resim yükleme
             $resimAdi = '';
             $resimDosyasi = $_FILES['urun_resmi'] ?? null;
-            
-            // Eğer resim yüklenmişse
+
+            // resim yüklenmişmi diye kontrol eder
             if ($resimDosyasi && $resimDosyasi['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = __DIR__ . '/../../kitaplar/';
                 $dosyaUzantisi = strtolower(pathinfo($resimDosyasi['name'], PATHINFO_EXTENSION));
                 $gecerliUzantilar = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                
-                // Dosya uzantısını kontrol et
+                //dosya türü geçersiz olduğunda hata gösterir
                 if (!in_array($dosyaUzantisi, $gecerliUzantilar)) {
                     $mesaj = "Geçersiz dosya uzantısı! Sadece JPG, PNG, GIF, WEBP kabul edilir.";
                     $mesajTipi = "error";
                 } else {
-                    // Benzersiz dosya adı oluştur
-                    $urunId = time(); // Geçici ID
+                    $urunId = time();
                     $yeniDosyaAdi = 'urun_' . $urunId . '_' . rand(1000, 9999) . '.' . $dosyaUzantisi;
                     $hedefYol = $uploadDir . $yeniDosyaAdi;
-                    
-                    // Dosyayı yükle
+
                     if (move_uploaded_file($resimDosyasi['tmp_name'], $hedefYol)) {
                         $resimAdi = $yeniDosyaAdi;
                     } else {
@@ -75,21 +73,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             }
-            
-            // Eğer resim yükleme hatası yoksa
+
+            //veritabanını günceller
             if ($mesajTipi !== "error") {
-                // Ürünü veritabanına ekle
                 $stmt = $pdo->prepare("INSERT INTO Urun (urunadi, yazar, kategoriid, fiyat, aciklama, resim) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$urunAdi, $yazar, $kategoriId, $fiyat, $aciklama, $resimAdi]);
-                
+
                 $mesaj = "Ürün başarıyla eklendi!";
                 $mesajTipi = "success";
-                
-                // Formu temizle
+
+                //güncellenmiş ürünü tekrar çeker
                 $urunAdi = $yazar = $aciklama = '';
                 $kategoriId = $fiyat = 0;
             }
-            
+
         } catch (PDOException $e) {
             $mesaj = "Hata: " . $e->getMessage();
             $mesajTipi = "error";
@@ -97,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>

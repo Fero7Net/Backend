@@ -1,0 +1,7 @@
+php yetkiduzenleme.php kullanici@example.com
+
+//Sunucu Ayağa Kaldırma
+php -S localhost:8000
+
+//Sunucu URL
+http://localhost:8000/index/index.php

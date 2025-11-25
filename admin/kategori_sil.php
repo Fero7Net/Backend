@@ -1,11 +1,7 @@
 <?php
-// DOSYA ADI: admin/kategori_sil.php
-// AÇIKLAMA: Kategori silme API endpoint'i - AJAX ile dinamik kategori silme işlemleri için
-
-// 1. Merkezi oturum kontrol dosyamızı çağır
 require_once __DIR__ . '/../session.php';
 
-// 2. ADMIN GÜVENLİK KONTROLÜ - Sadece admin yetkisi olanlar kategori silebilir
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header('Content-Type: application/json');
     echo json_encode([
@@ -15,7 +11,7 @@ if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     exit;
 }
 
-// 3. AJAX isteği kontrolü - Sadece POST istekleri kabul edilir
+// istekler post ise kabul edilir
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Content-Type: application/json');
     echo json_encode([
@@ -25,11 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// 4. JSON verisini al ve işle
+// json verisini alır ve işler
 $input = json_decode(file_get_contents('php://input'), true);
 $kategoriId = isset($input['kategoriId']) ? (int)$input['kategoriId'] : 0;
 
-// 5. Kategori ID kontrolü
+// kategori id kontrolü
 if ($kategoriId <= 0) {
     header('Content-Type: application/json');
     echo json_encode([
@@ -40,14 +36,14 @@ if ($kategoriId <= 0) {
 }
 
 try {
-    // 6. Kategoriyi silmeden önce, bu kategoride ürün olup olmadığını kontrol et
+    //kategoriyi silmeden önce ürün olup olmadığını kontrol eder
     $stmt = $pdo->prepare("SELECT COUNT(*) as sayi FROM Urun WHERE kategoriid = ?");
     $stmt->execute([$kategoriId]);
     $sonuc = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // 7. Kategori silme işlemi
+    //kategori silme
     if ($sonuc && $sonuc['sayi'] > 0) {
-        // Bu kategoride ürünler var - Foreign key constraint sayesinde kategoriid NULL olacak
+        // bu kategoride ürün olduğunu belirtir
         $stmt = $pdo->prepare("DELETE FROM Kategoriler WHERE kategoriid = ?");
         $stmt->execute([$kategoriId]);
         
@@ -58,7 +54,7 @@ try {
             'warning' => true
         ]);
     } else {
-        // Kategoride ürün yok - Normal silme
+        // kategoride ürün yoksa
         $stmt = $pdo->prepare("DELETE FROM Kategoriler WHERE kategoriid = ?");
         $stmt->execute([$kategoriId]);
         
@@ -70,7 +66,6 @@ try {
     }
     
 } catch (PDOException $e) {
-    // 8. Hata durumunda mesaj döndür
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,

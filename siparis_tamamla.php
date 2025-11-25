@@ -1,10 +1,8 @@
 <?php
-// BACKEND: Sipariş tamamla
-
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session.php';
 
-// Sadece POST isteklerini kabul et
+// sadece post isteklerini kabul etme
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode([
@@ -14,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Kullanıcı giriş yapmamışsa hata döndür
+// kullanıcı giriş yapmamışsa hata verir
 if (!$isLoggedIn) {
     http_response_code(401);
     echo json_encode([
@@ -25,7 +23,7 @@ if (!$isLoggedIn) {
 }
 
 try {
-    // Kullanıcının sepetindeki tüm kayıtları sil
+    // kullanıcının sepetindeki kayıtlar silinir
     $stmt = $pdo->prepare("DELETE FROM Sepet WHERE kullaniciid = ?");
     $stmt->execute([$currentUser['kullaniciid']]);
     

@@ -1,48 +1,47 @@
 <?php
-// BACKEND: Kullanıcı düzenleme
-
 require_once __DIR__ . '/../../session.php';
-
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. KULLANICI ID'SİNİ AL
-$kullaniciId = (int)($_GET['id'] ?? 0);
-
+$kullaniciId = (int)($_GET['id'] ?? 0); // get parametresi id alınır int çevrilir
 if ($kullaniciId <= 0) {
+    // ıd geçersiz ise kullanıcılar sayfasına döndürür
     header("Location: /admin/kullanicilar/kullanicilar.php");
     exit;
 }
 
-// 4. KULLANICI BİLGİLERİNİ ÇEK
+//kullanıcı bilgilerini veritabanından çeker
 try {
     $stmt = $pdo->prepare("SELECT * FROM Kullanici WHERE kullaniciid = ?");
     $stmt->execute([$kullaniciId]);
     $kullanici = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$kullanici) {
+        //kullanıcı bulunamazsa listeye döndürür
         header("Location: /admin/kullanicilar/kullanicilar.php");
         exit;
     }
 } catch (PDOException $e) {
+    // PDO hatası olursa listeye döndürür
     header("Location: /admin/kullanicilar/kullanicilar.php");
     exit;
 }
 
-// 5. KULLANICI GÜNCELLEME İŞLEMİ
-$mesaj = '';
-$mesajTipi = '';
+$mesaj = '';       // mesaj içeriği
+$mesajTipi = '';   // mesaj tipi success veya error
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // formdan gelen verileri alır boşluk var ise temizler
     $adi = trim($_POST['adi'] ?? '');
     $soyadi = trim($_POST['soyadi'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $sifre = trim($_POST['sifre'] ?? '');
     $yetki = $_POST['yetki'] ?? 'user';
-    
-    // Validasyon
+
+    //boş veya hatalı kontrolü
     if (empty($adi)) {
         $mesaj = "Ad boş olamaz!";
         $mesajTipi = "error";
@@ -57,42 +56,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mesajTipi = "error";
     } else {
         try {
-            // E-posta başka kullanıcıda var mı kontrol et
+            //kullanıcı ile epostayı karşılaştırır
             $stmt = $pdo->prepare("SELECT kullaniciid FROM Kullanici WHERE email = ? AND kullaniciid != ?");
             $stmt->execute([$email, $kullaniciId]);
-            
+
             if ($stmt->fetch()) {
                 $mesaj = "Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor!";
                 $mesajTipi = "error";
             } else {
-                // Şifre güncelleniyor mu?
+                //şifre güncelleme
                 if (!empty($sifre)) {
                     if (strlen($sifre) < 4) {
                         $mesaj = "Şifre en az 4 karakter olmalıdır!";
                         $mesajTipi = "error";
                     } else {
-                        // Şifreyi hashle ve güncelle
+                        //şifreyi hashler ve günceller
                         $hashedPassword = password_hash($sifre, PASSWORD_DEFAULT);
                         $stmt = $pdo->prepare("UPDATE Kullanici SET adi = ?, soyadi = ?, email = ?, sifre = ?, yetki = ? WHERE kullaniciid = ?");
                         $stmt->execute([$adi, $soyadi, $email, $hashedPassword, $yetki, $kullaniciId]);
-                        
+
                         $mesaj = "Kullanıcı başarıyla güncellendi!";
                         $mesajTipi = "success";
-                        
-                        // Güncellenmiş bilgileri çek
+
+                        //güncellenmiş bilgileri tekrar çeker
                         $stmt = $pdo->prepare("SELECT * FROM Kullanici WHERE kullaniciid = ?");
                         $stmt->execute([$kullaniciId]);
                         $kullanici = $stmt->fetch(PDO::FETCH_ASSOC);
                     }
                 } else {
-                    // Şifre güncellenmiyor, sadece diğer bilgileri güncelle
+                    //düzenlemede şifre boş bırakıldı ise şifre değişmez
                     $stmt = $pdo->prepare("UPDATE Kullanici SET adi = ?, soyadi = ?, email = ?, yetki = ? WHERE kullaniciid = ?");
                     $stmt->execute([$adi, $soyadi, $email, $yetki, $kullaniciId]);
-                    
+
                     $mesaj = "Kullanıcı başarıyla güncellendi!";
                     $mesajTipi = "success";
-                    
-                    // Güncellenmiş bilgileri çek
+
+                    // güncellenmiş bilgileri tekrar çeker
                     $stmt = $pdo->prepare("SELECT * FROM Kullanici WHERE kullaniciid = ?");
                     $stmt->execute([$kullaniciId]);
                     $kullanici = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -105,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>

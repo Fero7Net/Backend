@@ -1,12 +1,9 @@
 <?php
-// BACKEND: Sepet API
-
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session.php';
 
-// Sadece POST isteklerini kabul et
+// sadece POST isteklerini kabul eder
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    // HTTP 405 Method Not Allowed hatası döndür
     http_response_code(405);
     echo json_encode([
         'success' => false,
@@ -15,9 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Kullanıcı giriş yapmamışsa hata döndür
+// kullanıcı giriş yapmamışsa hata verir
 if (!$isLoggedIn) {
-    // HTTP 401 Unauthorized hatası döndür
     http_response_code(401);
     echo json_encode([
         'success' => false,
@@ -26,12 +22,11 @@ if (!$isLoggedIn) {
     exit;
 }
 
-// JSON verisini al
+// json formatında gelen veriyi alıyoruz
 $input = json_decode(file_get_contents('php://input'), true);
 
-// JSON verisi geçersizse hata döndür
+// json verisi geçersiz ise hata verir
 if (!$input) {
-    // HTTP 400 Bad Request hatası döndür
     http_response_code(400);
     echo json_encode([
         'success' => false,
@@ -40,32 +35,32 @@ if (!$input) {
     exit;
 }
 
-// Gelen verileri al
-$action = $input['action'] ?? ''; // İşlem türü (add, update, remove)
-$urunId = $input['urunId'] ?? null; // Ürün ID'si
-$quantity = $input['quantity'] ?? 1; // Ürün adedi
-$sepetId = $input['sepetId'] ?? null; // Sepet ID'si
+// gelen verileri alma
+$action = $input['action'] ?? '';
+$urunId = $input['urunId'] ?? null;
+$quantity = $input['quantity'] ?? 1;
+$sepetId = $input['sepetId'] ?? null;
 
 try {
     switch ($action) {
         case 'add':
-            // Sepete ürün ekleme işlemi
+            // sepete ürün ekleme işlemi
             if (!$urunId || $quantity < 1) {
                 throw new Exception('Geçersiz ürün ID veya adet');
             }
             
-            // Önce bu ürünün sepetinde var mı kontrol et
+            // ürün sepette varmı kontrol eder
             $stmt = $pdo->prepare("SELECT sepetid, adet FROM Sepet WHERE kullaniciid = ? AND urunid = ?");
             $stmt->execute([$currentUser['kullaniciid'], $urunId]);
             $existingItem = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($existingItem) {
-                // Varsa adedini güncelle
+                // ürün sepette var ise adet güncellenir
                 $newQuantity = $existingItem['adet'] + $quantity;
                 $stmt = $pdo->prepare("UPDATE Sepet SET adet = ? WHERE sepetid = ?");
                 $stmt->execute([$newQuantity, $existingItem['sepetid']]);
             } else {
-                // Yoksa yeni ekle
+                // ürün sepette yok ise eklenir
                 $stmt = $pdo->prepare("INSERT INTO Sepet (kullaniciid, urunid, adet) VALUES (?, ?, ?)");
                 $stmt->execute([$currentUser['kullaniciid'], $urunId, $quantity]);
             }
@@ -77,12 +72,12 @@ try {
             break;
             
         case 'update':
-            // Sepetteki ürünün adedini güncelle
+            // sepetteki ürünün adedini günceller
             if (!$sepetId || $quantity < 1) {
                 throw new Exception('Geçersiz sepet ID veya adet');
             }
             
-            // Bu sepet öğesinin kullanıcıya ait olduğunu kontrol et
+            // bu sepetteki öge kullanıcıya ait mi kontrol eder
             $stmt = $pdo->prepare("SELECT sepetid FROM Sepet WHERE sepetid = ? AND kullaniciid = ?");
             $stmt->execute([$sepetId, $currentUser['kullaniciid']]);
             
@@ -90,7 +85,6 @@ try {
                 throw new Exception('Bu sepet öğesi size ait değil');
             }
             
-            // Adedi güncelle
             $stmt = $pdo->prepare("UPDATE Sepet SET adet = ? WHERE sepetid = ?");
             $stmt->execute([$quantity, $sepetId]);
             
@@ -101,12 +95,12 @@ try {
             break;
             
         case 'remove':
-            // Sepetten ürün kaldır
+            // sepetten ürün kaldırır
             if (!$sepetId) {
                 throw new Exception('Geçersiz sepet ID');
             }
             
-            // Bu sepet öğesinin kullanıcıya ait olduğunu kontrol et
+            // bu sepetteki öge kullanıcıya ait mi kontrol eder
             $stmt = $pdo->prepare("SELECT sepetid FROM Sepet WHERE sepetid = ? AND kullaniciid = ?");
             $stmt->execute([$sepetId, $currentUser['kullaniciid']]);
             
@@ -114,7 +108,7 @@ try {
                 throw new Exception('Bu sepet öğesi size ait değil');
             }
             
-            // Ürünü sepetten sil
+            // ürünü sepetten kaldırır
             $stmt = $pdo->prepare("DELETE FROM Sepet WHERE sepetid = ?");
             $stmt->execute([$sepetId]);
             
@@ -129,14 +123,12 @@ try {
     }
     
 } catch (Exception $e) {
-    // Genel hata durumu
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
     ]);
 } catch (PDOException $e) {
-    // Veritabanı hatası durumu
     http_response_code(500);
     echo json_encode([
         'success' => false,

@@ -3,15 +3,15 @@ session_start();
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../../../db/database.php';
 
-// Admin kontrolü
+// burda kullanıcı giriş yapmamışsa giriş yapmasını ister
 if (!isset($_SESSION['user_id']) || $_SESSION['yetki'] !== 'admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Yetkisiz erişim.']);
     exit;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
+$method = $_SERVER['REQUEST_METHOD'];//isteğin hangi method ile geldiğini gösterir
+$input = json_decode(file_get_contents('php://input'), true);//bu JSON formatında gönderilen veriyi okur ve diziye çevirir
 
 try {
     if ($method === 'GET') {
@@ -20,12 +20,14 @@ try {
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'users' => $users]);
 
-    } elseif ($method === 'DELETE') {
+    } 
+    //silinecek epostayı kontrol eder eğer eposta yoksa işlemi durdurur
+    elseif ($method === 'DELETE') {
         if (!isset($input['email'])) {
             echo json_encode(['success' => false, 'message' => 'E-posta gönderilmedi.']);
             exit;
         }
-
+    //eposta var ise silme işlemi yapar
         $stmt = $pdo->prepare("DELETE FROM Kullanici WHERE email = ?");
         $stmt->execute([$input['email']]);
         echo json_encode(['success' => true, 'message' => 'Kullanıcı başarıyla silindi!']);

@@ -1,8 +1,7 @@
 <?php
-// BACKEND: Admin paneli
-
 require_once __DIR__ . '/../session.php';
 
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;

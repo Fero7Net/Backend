@@ -1,10 +1,7 @@
 <?php
-// BACKEND: Profil sayfası
-
 require_once __DIR__ . '/../session.php';
 
-// 2. KATEGORİLERİ ÇEK
-// Navbar'da listelemek için
+//kategorileri çeker
 try { 
     $query = $pdo->query("
         SELECT 
@@ -25,6 +22,7 @@ try {
     $kategoriler = [];
 }
 
+//giriş yapılmadıysa giriş yap sayfasına yönlendirir
 if (!$isLoggedIn) {
     header("Location: /login/login.html");
     exit;

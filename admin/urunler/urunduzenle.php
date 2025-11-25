@@ -1,60 +1,59 @@
 <?php
-// DOSYA ADI: Test/admin/urunler/urunduzenle.php
-// AÇIKLAMA: Admin ürün düzenleme sayfası
-
-// 1. Merkezi oturum kontrol dosyamızı çağır
 require_once __DIR__ . '/../../session.php';
 
-// 2. ADMIN GÜVENLİK KONTROLÜ
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
+    // kullanıcı admin değil ise anasayfaya yönlendirir
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. Ürün ID kontrolü
 if (!isset($_GET['id'])) {
+    // id parametresi yoksa ürün sayfasına geri döndür
     header("Location: /admin/urunler/urunler.php");
     exit;
 }
-
 $urunId = (int)$_GET['id'];
 
-// 4. Ürün bilgilerini çek
+//ürün bilgilerini veritabanından çeker
 try {
     $stmt = $pdo->prepare("SELECT * FROM Urun WHERE urunid = ?");
     $stmt->execute([$urunId]);
     $urun = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$urun) {
+        // ürün bulunamazsa listeye dön
         header("Location: /admin/urunler/urunler.php");
         exit;
     }
 } catch (PDOException $e) {
+    // pdo hatası olursa listeye dön
     header("Location: /admin/urunler/urunler.php");
     exit;
 }
 
-// 5. KATEGORİLERİ ÇEK
+//kategorileri veritabanından çeker
 try {
     $stmt = $pdo->prepare("SELECT * FROM Kategoriler ORDER BY kategoriadi");
     $stmt->execute();
     $kategoriler = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    // hata olursa kategori listesi boş olacak
     $kategoriler = [];
 }
 
-// 6. ÜRÜN GÜNCELLEME İŞLEMİ
-$mesaj = '';
-$mesajTipi = '';
+//ürün güncelleme
+$mesaj = '';       // ekrana gösterilecek mesaj
+$mesajTipi = '';   // Mesaj tipi success veya error
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // formdan gelen verileri alır boşluk var ise temizler
     $urunAdi = trim($_POST['urun_adi'] ?? '');
     $yazar = trim($_POST['yazar'] ?? '');
     $kategoriId = (int)($_POST['kategori_id'] ?? 0);
     $fiyat = (float)($_POST['fiyat'] ?? 0);
     $aciklama = trim($_POST['aciklama'] ?? '');
     
-    // Validasyon
+    //boş veya hatalı kontrolü
     if (empty($urunAdi)) {
         $mesaj = "Ürün adı boş olamaz!";
         $mesajTipi = "error";
@@ -69,28 +68,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mesajTipi = "error";
     } else {
         try {
-            // RESİM YÜKLEME İŞLEMİ
+            //resim yükleme
             $resimDosyasi = $_FILES['urun_resmi'] ?? null;
-            $resimAdi = $urun['resim']; // Mevcut resmi koruyalım
+            $resimAdi = $urun['resim']; // Mevcut resmi koru
             
-            // Eğer yeni bir resim yüklenmişse
+            // resim yüklenmişmi diye kontrol eder
             if ($resimDosyasi && $resimDosyasi['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = __DIR__ . '/../../kitaplar/';
                 $dosyaUzantisi = strtolower(pathinfo($resimDosyasi['name'], PATHINFO_EXTENSION));
                 $gecerliUzantilar = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                
-                // Dosya uzantısını kontrol et
+                //dosya türü geçersiz olduğunda hata gösterir
                 if (!in_array($dosyaUzantisi, $gecerliUzantilar)) {
                     $mesaj = "Geçersiz dosya uzantısı! Sadece JPG, PNG, GIF, WEBP kabul edilir.";
                     $mesajTipi = "error";
                 } else {
-                    // Benzersiz dosya adı oluştur
                     $yeniDosyaAdi = 'urun_' . $urunId . '_' . time() . '.' . $dosyaUzantisi;
                     $hedefYol = $uploadDir . $yeniDosyaAdi;
                     
-                    // Dosyayı yükle
                     if (move_uploaded_file($resimDosyasi['tmp_name'], $hedefYol)) {
-                        // Eski resmi sil (varsa ve yeni resim farklıysa)
+                        // Eski resmi sil (varsa ve yeni farklıysa)
                         if (!empty($urun['resim']) && $urun['resim'] !== $yeniDosyaAdi) {
                             $eskiResimYolu = $uploadDir . $urun['resim'];
                             if (file_exists($eskiResimYolu)) {
@@ -105,16 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // Eğer resim yükleme hatası yoksa veya resim yüklenmemişse (sadece diğer bilgiler güncellenecek)
+            //veritabanını günceller
             if ($mesajTipi !== "error") {
-                // Ürünü veritabanında güncelle (resim dahil)
                 $stmt = $pdo->prepare("UPDATE Urun SET urunadi = ?, yazar = ?, kategoriid = ?, fiyat = ?, aciklama = ?, resim = ? WHERE urunid = ?");
                 $stmt->execute([$urunAdi, $yazar, $kategoriId, $fiyat, $aciklama, $resimAdi, $urunId]);
                 
                 $mesaj = "Ürün başarıyla güncellendi!";
                 $mesajTipi = "success";
                 
-                // Güncellenmiş verileri tekrar çek
+                // güncellenmiş ürünü tekrar çeker
                 $stmt = $pdo->prepare("SELECT * FROM Urun WHERE urunid = ?");
                 $stmt->execute([$urunId]);
                 $urun = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -127,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>

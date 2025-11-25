@@ -1,12 +1,8 @@
 <?php
-// 1. VERİTABANI VE OTURUM BAĞLANTISI
-// TÜM sorgulardan önce bu dosya çağrılmalıdır.
-// Bu dosya $pdo değişkenini, $isLoggedIn, $currentUser vb. değişkenleri oluşturur.
 require_once __DIR__ . '/../session.php';
 
 
-// 2. KATEGORİLERİ ÇEK
-// Navbar'da listelemek için
+//kategorileri çekmek için
 try { 
     $query = $pdo->query("
         SELECT 
@@ -28,18 +24,15 @@ try {
 }
 
 
-// 3. ÇIKIŞ MESAJI KONTROLÜ
+//çıkış mesajı kontolü
 $logoutMessage = '';
 if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     $logoutMessage = 'Başarıyla çıkış yaptınız!';
 }
 
 
-// 4. ANASAYFA ÜRÜNLERİNİ ÇEK
 try {
-    // Popüler kitaplar (rastgele 4 ürün)
-    // NOT: SQLite için ORDER BY RANDOM(), MySQL için ORDER BY RAND() kullanın.
-    // Sizin kodunuzda RANDOM() vardı, o şekilde bıraktım.
+    //ana sayfada rastgele 4 ürün listeleme
     $stmt = $pdo->prepare("
         SELECT u.*, k.kategoriadi 
         FROM Urun u 
@@ -50,7 +43,7 @@ try {
     $stmt->execute();
     $populerUrunler = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Son eklenenler (en son eklenen 4 ürün)
+    // en son eklenenler
     $stmt = $pdo->prepare("
         SELECT u.*, k.kategoriadi 
         FROM Urun u 
@@ -62,7 +55,7 @@ try {
     $sonEklenenler = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
-    // Hata olursa sayfayı boş göstermek yerine boş diziler ata
+    // hata olursa sayfayı boş göstermek yerine boş diziler ata
     $populerUrunler = [];
     $sonEklenenler = [];
 } 

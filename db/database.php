@@ -1,13 +1,12 @@
 <?php
-// BACKEND: Veritabanı bağlantısı
+// veritabanı Bağlantısı
 
 try {
     $pdo = new PDO('sqlite:' . __DIR__ . '/data.db');
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec('PRAGMA foreign_keys = ON;');
 
-    // Veritabanı tablolarını (Kategoriler, Kullanici, Urun, Sepet) oluşturan SQL komutları.
-    // "IF NOT EXISTS" sayesinde, tablolar zaten varsa tekrar oluşturulmaz, hata vermez.
+    //veritabanını oluşturan sql kodları
     $sql = "
     CREATE TABLE IF NOT EXISTS Kategoriler (
         kategoriid INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,26 +49,22 @@ try {
     );
     ";
 
-    // Yukarıdaki SQL komutlarını veritabanında çalıştır.
+    // bu kod ile yukarıdaki SQL komutlarını veritabanında çalıştır
     $pdo->exec($sql);
 
 } catch (PDOException $e) {
-    // --- GÜNCELLENEN HATA YÖNETİMİ ---
-    // Eğer 'try' bloğunda (örn: veritabanı dosyasına yazma izni yoksa) bir hata olursa:
-    
-    // Tarayıcıya bunun bir JSON yanıtı olduğunu söylüyoruz.
+    // eğer try bloğunda hata olursa:
     header('Content-Type: application/json; charset=utf-8');
     
-    // Tarayıcıya bunun bir 'Sunucu Hatası' (500) olduğunu söylüyoruz.
+    // sunucu hatası ise hata kodu 500 olarak gösterilir
     http_response_code(500); 
     
-    // Hatayı, login.js'in anlayabileceği JSON formatında basıyoruz.
+    // json formatında basarak hatanın nedenini yazıyoruz
     echo json_encode([
         'success' => false,
         'message' => 'Veritabanı bağlantı hatası: ' . $e->getMessage()
     ]);
     
-    // Betiği sonlandırıyoruz.
     exit;
 }
 ?>

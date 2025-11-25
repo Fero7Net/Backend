@@ -1,20 +1,19 @@
 <?php
-// BACKEND: Ürün listesi
-
 require_once __DIR__ . '/../../session.php';
 
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. KATEGORİ EKLEME İŞLEMİ (R4.3)
+//kategori ekleme işlemi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori_adi'])) {
     $kategoriAdi = trim($_POST['kategori_adi']);
     
     if (!empty($kategoriAdi)) {
         try {
-            // Kategori zaten var mı kontrol et
+            // kategori zaten var mı kontrol eder
             $stmt = $pdo->prepare("SELECT kategoriid FROM Kategoriler WHERE kategoriadi = ?");
             $stmt->execute([$kategoriAdi]);
             
@@ -22,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori_adi'])) {
                 $kategoriMesaji = "Bu kategori zaten mevcut!";
                 $kategoriMesajTipi = "error";
             } else {
-                // Yeni kategori ekle
+                // yeni kategori ekleme
                 $stmt = $pdo->prepare("INSERT INTO Kategoriler (kategoriadi) VALUES (?)");
                 $stmt->execute([$kategoriAdi]);
                 $kategoriMesaji = "Kategori başarıyla eklendi!";
@@ -38,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kategori_adi'])) {
     }
 }
 
-// 4. KATEGORİLERİ ÇEK
+// veritabanından kategorileri çeker
 try {
     $stmt = $pdo->prepare("SELECT * FROM Kategoriler ORDER BY kategoriadi");
     $stmt->execute();
@@ -47,7 +46,7 @@ try {
     $kategoriler = [];
 }
 
-// 5. ÜRÜNLERİ ÇEK
+// veritabanından ürünleri çeker
 try {
     $stmt = $pdo->prepare("
         SELECT u.*, k.kategoriadi 

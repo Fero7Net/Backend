@@ -1,17 +1,8 @@
 <?php
-// DOSYA ADI: Test/admin/urun_sil.php
-// AÇIKLAMA: Backend API - Admin ürün silme işlemi
-
-// === JSON YANIT AYARI ===
-// Tarayıcıya JSON formatında yanıt göndereceğimizi belirt
 header('Content-Type: application/json; charset=utf-8');
-
-// === OTURUM KONTROLÜ ===
-// Merkezi oturum dosyasını dahil et (kullanıcı giriş kontrolü için)
 require_once __DIR__ . '/../session.php';
 
-// === HTTP METODU KONTROLÜ ===
-// Sadece POST isteklerini kabul et (güvenlik için)
+// istekler post ise kabul edilir
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405); // Method Not Allowed
     echo json_encode([
@@ -21,10 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// === YETKİ KONTROLÜ ===
-// Kullanıcının giriş yapmış ve admin yetkisine sahip olup olmadığını kontrol et
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
-    http_response_code(403); // Forbidden
+    http_response_code(403);
     echo json_encode([
         'success' => false,
         'message' => 'Bu işlem için admin yetkisi gereklidir'
@@ -32,13 +22,12 @@ if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     exit;
 }
 
-// === VERİ ALMA ===
-// Tarayıcıdan gönderilen JSON verisini al ve PHP dizisine çevir
+// json verisini alır ve işler
 $input = json_decode(file_get_contents('php://input'), true);
 
-// Gönderilen verinin geçerli olup olmadığını kontrol et
+// gönderilen verinin geçerli olup olmadığını kontrol eder
 if (!$input || !isset($input['urunId'])) {
-    http_response_code(400); // Bad Request
+    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Geçersiz veri'
@@ -46,25 +35,21 @@ if (!$input || !isset($input['urunId'])) {
     exit;
 }
 
-// Silinecek ürünün ID'sini al ve integer'a çevir
+//silinecek urun id sini int e çevirir
 $urunId = (int)$input['urunId'];
 
-// === VERİTABANI İŞLEMİ ===
 try {
-    // Ürünü veritabanından sil
-    // NOT: CASCADE kuralı sayesinde bu ürünün sepet kayıtları da otomatik silinir
+    //ürünü veritabanından silme işlemi
     $stmt = $pdo->prepare("DELETE FROM Urun WHERE urunid = ?");
     $stmt->execute([$urunId]);
     
-    // İşlem başarılı ise (en az 1 satır etkilendi)
     if ($stmt->rowCount() > 0) {
-        // Başarı mesajı gönder
+        // başarı mesajı gönderir
         echo json_encode([
             'success' => true,
             'message' => 'Ürün başarıyla silindi'
         ]);
     } else {
-        // Ürün bulunamadı (ID yanlış)
         echo json_encode([
             'success' => false,
             'message' => 'Ürün bulunamadı'
@@ -72,8 +57,7 @@ try {
     }
     
 } catch (PDOException $e) {
-    // Veritabanı hatası olursa hata mesajı gönder
-    http_response_code(500); // Internal Server Error
+    http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Veritabanı hatası: ' . $e->getMessage()

@@ -1,28 +1,17 @@
 <?php
-// DOSYA ADI: Test/admin/kullanici_sil.php
-// AÇIKLAMA: Backend API - Admin kullanıcı silme işlemi
-
-// === JSON YANIT AYARI ===
-// Tarayıcıya JSON formatında yanıt göndereceğimizi belirt
 header('Content-Type: application/json; charset=utf-8');
-
-// === OTURUM KONTROLÜ ===
-// Merkezi oturum dosyasını dahil et (kullanıcı giriş kontrolü için)
 require_once __DIR__ . '/../session.php';
 
-// === HTTP METODU KONTROLÜ ===
-// Sadece POST isteklerini kabul et (güvenlik için)
+//istekler post ise kabul edilir
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405); // Method Not Allowed
+    http_response_code(405);
     echo json_encode([
         'success' => false,
         'message' => 'Sadece POST istekleri kabul edilir'
     ]);
     exit;
 }
-
-// === YETKİ KONTROLÜ ===
-// Kullanıcının giriş yapmış ve admin yetkisine sahip olup olmadığını kontrol et
+// kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     http_response_code(403); // Forbidden
     echo json_encode([
@@ -32,13 +21,12 @@ if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     exit;
 }
 
-// === VERİ ALMA ===
-// Tarayıcıdan gönderilen JSON verisini al ve PHP dizisine çevir
+// json verisini alır ve işler
 $input = json_decode(file_get_contents('php://input'), true);
 
-// Gönderilen verinin geçerli olup olmadığını kontrol et
+// gönderilen verinin geçerli olup olmadığını kontrol eder
 if (!$input || !isset($input['kullaniciId'])) {
-    http_response_code(400); // Bad Request
+    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Geçersiz veri'
@@ -46,13 +34,12 @@ if (!$input || !isset($input['kullaniciId'])) {
     exit;
 }
 
-// Silinecek kullanıcının ID'sini al ve integer'a çevir
+// silinecek kullanıcının id sini alır ve int e çevirir
 $kullaniciId = (int)$input['kullaniciId'];
 
-// === GÜVENLİK KONTROLÜ ===
-// Admin'in kendi hesabını silmesini engelle
+//adminin kendi hesabını silmesini engeller
 if ($kullaniciId == $currentUser['kullaniciid']) {
-    http_response_code(400); // Bad Request
+    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Kendi hesabınızı silemezsiniz'
@@ -60,22 +47,18 @@ if ($kullaniciId == $currentUser['kullaniciid']) {
     exit;
 }
 
-// === VERİTABANI İŞLEMİ ===
 try {
-    // Kullanıcıyı veritabanından sil
-    // NOT: CASCADE kuralı sayesinde bu kullanıcının sepet kayıtları da otomatik silinir
+    //kullanıcıyı veritabanından siler
     $stmt = $pdo->prepare("DELETE FROM Kullanici WHERE kullaniciid = ?");
     $stmt->execute([$kullaniciId]);
     
-    // İşlem başarılı ise (en az 1 satır etkilendi)
     if ($stmt->rowCount() > 0) {
-        // Başarı mesajı gönder
+        // başarı mesajı gönderir
         echo json_encode([
             'success' => true,
             'message' => 'Kullanıcı başarıyla silindi'
         ]);
     } else {
-        // Kullanıcı bulunamadı (ID yanlış)
         echo json_encode([
             'success' => false,
             'message' => 'Kullanıcı bulunamadı'
@@ -83,8 +66,7 @@ try {
     }
     
 } catch (PDOException $e) {
-    // Veritabanı hatası olursa hata mesajı gönder
-    http_response_code(500); // Internal Server Error
+    http_response_code(500);
     echo json_encode([
         'success' => false,
         'message' => 'Veritabanı hatası: ' . $e->getMessage()

@@ -1,25 +1,23 @@
 <?php
-// BACKEND: Kullanıcı ekleme
-
 require_once __DIR__ . '/../../session.php';
-
+// burda kullanıcı giriş yapmamışsa giriş yapmasını ister
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. KULLANICI EKLEME İŞLEMİ
-$mesaj = '';
-$mesajTipi = '';
+$mesaj = '';       // ekrana gösterilecek mesaj
+$mesajTipi = '';   // mesaj tipi success veya error
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // formdan gelen verileri alır boşluk var ise temizler
     $adi = trim($_POST['adi'] ?? '');
     $soyadi = trim($_POST['soyadi'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $sifre = trim($_POST['sifre'] ?? '');
     $yetki = $_POST['yetki'] ?? 'user';
-    
-    // Validasyon
+
+    //boş veya hatalı kontrolü
     if (empty($adi)) {
         $mesaj = "Ad boş olamaz!";
         $mesajTipi = "error";
@@ -40,35 +38,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mesajTipi = "error";
     } else {
         try {
-            // E-posta zaten var mı kontrol et
+            // aynı eposta başka kullanıcı tarafından kullanılıyor mu
             $stmt = $pdo->prepare("SELECT kullaniciid FROM Kullanici WHERE email = ?");
             $stmt->execute([$email]);
-            
+
             if ($stmt->fetch()) {
+                // eposta zaten kullanılıyor
                 $mesaj = "Bu e-posta adresi zaten kullanılıyor!";
                 $mesajTipi = "error";
             } else {
-                // Şifreyi hashle
+                // şifreyi hashlemek için
                 $hashedPassword = password_hash($sifre, PASSWORD_DEFAULT);
-                
-                // Yeni kullanıcı ekle
+
+                // yeni kullanıcı veritabanına ekler
                 $stmt = $pdo->prepare("INSERT INTO Kullanici (adi, soyadi, email, sifre, yetki) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$adi, $soyadi, $email, $hashedPassword, $yetki]);
-                
+
                 $mesaj = "Kullanıcı başarıyla eklendi!";
                 $mesajTipi = "success";
-                
-                // Formu temizle
+
+                // bittikten sonra formu temizler
                 $adi = $soyadi = $email = $sifre = '';
                 $yetki = 'user';
             }
         } catch (PDOException $e) {
+            // pdo hatası olursa mesajı ekrana gösterir
             $mesaj = "Hata: " . $e->getMessage();
             $mesajTipi = "error";
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>

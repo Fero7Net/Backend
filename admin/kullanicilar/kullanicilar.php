@@ -1,14 +1,14 @@
 <?php
-// BACKEND: Kullanıcı listesi
 
 require_once __DIR__ . '/../../session.php';
 
+//kullanıcı admin değil ise anasayfaya yönlendirir
 if (!$isLoggedIn || $currentUser['yetki'] !== 'admin') {
     header("Location: /index/index.php");
     exit;
 }
 
-// 3. KULLANICILARI ÇEK
+//kullanıcıları veritabanından çeker
 try {
     $stmt = $pdo->prepare("SELECT kullaniciid, adi, soyadi, email, yetki FROM Kullanici ORDER BY kullaniciid DESC");
     $stmt->execute();
